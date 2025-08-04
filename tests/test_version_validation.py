@@ -57,3 +57,23 @@ def test_version_validation(version, expectation):
 )
 def test_version_comparison_methods(comparison: bool, expectation: bool):
     assert comparison == expectation
+
+@pytest.mark.parametrize(
+    'self,other,expectation',
+    [
+        (Version("1.0.0"), 3, NotImplemented),
+        (Version("1.0.0"), '1.0.0', NotImplemented),
+    ]
+)
+def test_version_safe_comparison_returns_notimplemented_for_undexpected_type(self, other, expectation):
+    dunders = [
+        Version.__eq__,
+        Version.__gt__,
+        Version.__ne__,
+        Version.__lt__,
+        Version.__le__,
+        Version.__ge__,
+    ]
+
+    for dunder in dunders:
+        assert dunder(self, other) == expectation
