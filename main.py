@@ -1,8 +1,8 @@
-from typing import Callable, Type, cast
+from typing import Callable
 from functools import wraps
 
 class Version:
-    _core_identifiers = ['major', 'minor', 'patch']
+    _core_identifiers = ('major', 'minor', 'patch')
     pre_release: str | None = None
     build: str | None = None
 
@@ -21,15 +21,16 @@ class Version:
         "build": set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"),
     }
 
-    # @staticmethod
-    # def valid_comparison(method: Callable[["Version", object], bool]) -> Callable[["Version", object], bool]:
-    #     @wraps(method)
-    #     def wrapper(self, other):
-    #         if not isinstance(other, "Version"):
-    #             return NotImplemented
-    #
-    #         return method(self, cast("Version", other))
-    #     return wrapper
+    # Make sure the second parameter is instance of Version
+    @staticmethod
+    def safe_comparison(method: Callable[["Version", object], bool]) -> Callable[["Version", object], bool]:
+        @wraps(method)
+        def wrapper(self, other):
+            if not isinstance(other, Version):
+                return NotImplemented
+
+            return method(self, other)
+        return wrapper
 
     def __init__(self, version: str) -> None:
         self._init_from_string(version)
@@ -44,12 +45,14 @@ class Version:
     # COMPARISON METHODS -- While comparing build metadata is ignored!
     # Based on provided documentation (https://semver.org/)
 
+    @safe_comparison
     def __eq__(self, other, /) -> bool:
         return all([
             self.major == other.major, self.minor == other.minor,
             self.patch == other.patch, self.pre_release == other.pre_release
         ])
 
+    @safe_comparison
     def __gt__(self, other, /) -> bool:
         # Compare core identifiers 'major', 'minor', 'patch'
         for identifier in self._core_identifiers:
@@ -83,15 +86,19 @@ class Version:
         # If all parts match but one pre-release is shorter, it preceeds
         return len(self_pr_parts) > len(other_pr_parts)
 
+    @safe_comparison
     def __ne__(self, other) -> bool:
         return not self == other
 
+    @safe_comparison
     def __lt__(self, other, /) -> bool:
         return not (self == other or self > other)
 
+    @safe_comparison
     def __le__(self, other, /) -> bool:
         return self == other or self < other
 
+    @safe_comparison
     def __ge__(self, other, /) -> bool:
         return self == other or self > other
 
@@ -141,7 +148,7 @@ class Version:
         # Make sure the remaining version contains major, minor and patch identifiers
         core_parts = version.split('.')
         if len(core_parts) != 3:
-            raise ValueError(f"Core version must have exactly 3 identifiers major.minor.path")
+            raise ValueError(f"Core version must have exactly 3 identifiers major.minor.patch")
 
         major, minor, patch = core_parts
         # Validate the core identifiers
