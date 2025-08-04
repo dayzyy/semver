@@ -35,6 +35,49 @@ class Version:
     def __init__(self, version: str) -> None:
         self._init_from_string(version)
 
+    def _init_from_string(self, version) -> None:
+        build = None
+        pre_release = None
+
+        # Extract the build identifier, if it exists, and validate it
+        if '+' in version:
+            version, build = version.split('+', 1)
+            build_parts = build.split(".")
+
+            for part in build_parts:
+                if not self.identifier_is_valid('build', part):
+                    raise ValueError(f"Invalid build identifier: {build!r}")
+
+        # Extract the pre_release identifier, if it exists, and validate it
+        if '-' in version:
+            version, pre_release = version.split('-', 1)
+            pre_release_parts = pre_release.split('.')
+
+            for part in pre_release_parts:
+                if not self.identifier_is_valid('pre_release', part):
+                    raise ValueError(f"Invalid pre-release identifier: {pre_release!r}")
+
+        # Make sure the remaining version contains major, minor and patch identifiers
+        core_parts = version.split('.')
+        if len(core_parts) != 3:
+            raise ValueError(f"Core version must have exactly 3 identifiers major.minor.patch")
+
+        major, minor, patch = core_parts
+        # Validate the core identifiers
+        if not self.identifier_is_valid('major', major):
+            raise ValueError(f"Invalid major identifier: {major!r}")
+        if not self.identifier_is_valid('minor', minor):
+            raise ValueError(f"Invalid minor identifier: {minor!r}")
+        if not self.identifier_is_valid('patch', patch):
+            raise ValueError(f"Invalid patch identifier: {patch!r}")
+
+        # Set identifier attributes after successful validation
+        self.major = int(major)
+        self.minor = int(minor)
+        self.patch = int(patch)
+        self.pre_release = pre_release
+        self.build = build
+
     def __str__(self) -> str:
          return (
             ".".join([str(self.major), str(self.minor), str(self.patch)])
@@ -122,46 +165,3 @@ class Version:
 
         # Validate each character
         return all(char in valid_chars for char in value)
-
-    def _init_from_string(self, version) -> None:
-        build = None
-        pre_release = None
-
-        # Extract the build identifier, if it exists, and validate it
-        if '+' in version:
-            version, build = version.split('+', 1)
-            build_parts = build.split(".")
-
-            for part in build_parts:
-                if not self.identifier_is_valid('build', part):
-                    raise ValueError(f"Invalid build identifier: {build!r}")
-
-        # Extract the pre_release identifier, if it exists, and validate it
-        if '-' in version:
-            version, pre_release = version.split('-', 1)
-            pre_release_parts = pre_release.split('.')
-
-            for part in pre_release_parts:
-                if not self.identifier_is_valid('pre_release', part):
-                    raise ValueError(f"Invalid pre-release identifier: {pre_release!r}")
-
-        # Make sure the remaining version contains major, minor and patch identifiers
-        core_parts = version.split('.')
-        if len(core_parts) != 3:
-            raise ValueError(f"Core version must have exactly 3 identifiers major.minor.patch")
-
-        major, minor, patch = core_parts
-        # Validate the core identifiers
-        if not self.identifier_is_valid('major', major):
-            raise ValueError(f"Invalid major identifier: {major!r}")
-        if not self.identifier_is_valid('minor', minor):
-            raise ValueError(f"Invalid minor identifier: {minor!r}")
-        if not self.identifier_is_valid('patch', patch):
-            raise ValueError(f"Invalid patch identifier: {patch!r}")
-
-        # Set identifier attributes after successful validation
-        self.major = int(major)
-        self.minor = int(minor)
-        self.patch = int(patch)
-        self.pre_release = pre_release
-        self.build = build
