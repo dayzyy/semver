@@ -1,24 +1,30 @@
 from typing import Callable
 from functools import wraps
+from enum import Enum
 
 class Version:
-    _core_identifiers = ('major', 'minor', 'patch')
-    pre_release: str | None = None
-    build: str | None = None
+    class Identifier(Enum):
+        MAJOR = 'major'
+        MINOR = 'minor'
+        PATCH = 'patch'
+        PRE_RELEASE = 'pre_release'
+        BUILD = 'build'
+
+    _core_identifiers = (Identifier.MAJOR, Identifier.MINOR, Identifier.PATCH)
 
     # Mapping of valid characters for each identifier
     # {identifier: set-of-valid-char}; Use set for O(1) lookups
     # Based on provided documentation (https://semver.org/)
     SEMVER_IDENTIFIER_VALID_CHARS = {
-        "major": set("0123456789"), # Digits 0-9
-        "minor": set("0123456789"), # Digits 0-9
-        "patch": set("0123456789"), # Digits 0-9
+        Identifier.MAJOR.value: set("0123456789"), # Digits 0-9
+        Identifier.MINOR.value: set("0123456789"), # Digits 0-9
+        Identifier.PATCH.value: set("0123456789"), # Digits 0-9
 
         # Alphanumeric + Hyphen
-        "pre_release": set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"),
+        Identifier.PRE_RELEASE.value: set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"),
 
         # Alphanumeric + Hyphen
-        "build": set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"),
+        Identifier.BUILD.value: set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"),
     }
 
     # Make sure the second parameter is instance of Version
@@ -45,8 +51,8 @@ class Version:
             build_parts = build.split(".")
 
             for part in build_parts:
-                if not self.identifier_is_valid('build', part):
-                    raise ValueError(f"Invalid build identifier: {build!r}")
+                if not self.identifier_is_valid(self.Identifier.BUILD, part):
+                    raise ValueError(f"Invalid {self.Identifier.BUILD} identifier: {build!r}")
 
         # Extract the pre_release identifier, if it exists, and validate it
         if '-' in version:
@@ -54,19 +60,19 @@ class Version:
             pre_release_parts = pre_release.split('.')
 
             for part in pre_release_parts:
-                if not self.identifier_is_valid('pre_release', part):
-                    raise ValueError(f"Invalid pre-release identifier: {pre_release!r}")
+                if not self.identifier_is_valid(self.Identifier.PRE_RELEASE, part):
+                    raise ValueError(f"Invalid {self.Identifier.PRE_RELEASE} identifier: {pre_release!r}")
 
         # Make sure the remaining version contains major, minor and patch identifiers
         core_parts = version.split('.')
         if len(core_parts) != 3:
-            raise ValueError(f"Core version must have exactly 3 identifiers major.minor.patch")
+            raise ValueError(f"Core version must have exactly 3 identifiers {".".join([id.value for id in self._core_identifiers])}")
 
         major, minor, patch = core_parts
         # Validate the core identifiers
-        for name, value in zip(('major', 'minor', 'patch'), core_parts):
+        for name, value in zip(self._core_identifiers, core_parts):
             if not self.identifier_is_valid(name, value):
-                raise ValueError(f"Invalid {name} identifier: {major!r}")
+                raise ValueError(f"Invalid {name.value} identifier: {value!r}")
 
         # Set identifier attributes after successful validation
         self.major = int(major)
@@ -96,8 +102,8 @@ class Version:
     def __gt__(self, other, /) -> bool:
         # Compare core identifiers 'major', 'minor', 'patch'
         for identifier in self._core_identifiers:
-            if getattr(self, identifier) > getattr(other, identifier): return True
-            if getattr(self, identifier) < getattr(other, identifier): return False
+            if getattr(self, identifier.value) > getattr(other, identifier.value): return True
+            if getattr(self, identifier.value) < getattr(other, identifier.value): return False
 
         if self.pre_release is None and other.pre_release is None:
             return False  # Normal release == Normal release (pre-release absent in both)
@@ -144,16 +150,16 @@ class Version:
 
     __repr__ = __str__
 
-    def identifier_is_valid(self, identifier_name: str, value: str) -> bool:
+    def identifier_is_valid(self, identifier: "Version.Identifier", value: str) -> bool:
         # Check for empty identifier (Invalid everywhere)
         if not value:
             return False
 
-        valid_chars = self.SEMVER_IDENTIFIER_VALID_CHARS.get(identifier_name)
+        valid_chars = self.SEMVER_IDENTIFIER_VALID_CHARS.get(identifier.value)
         if valid_chars is None:
-            raise ValueError(f"Unknown identifier: {identifier_name}")
+            raise ValueError(f"Unknown identifier: {identifier}")
 
-        if identifier_name != 'build':
+        if identifier != self.Identifier.BUILD:
             # For all identifiers excluding build:
             # Make sure there is no leading 0
             # (We don't care about leading 0's' in build metadata as it is not used in version comparison)
