@@ -64,12 +64,9 @@ class Version:
 
         major, minor, patch = core_parts
         # Validate the core identifiers
-        if not self.identifier_is_valid('major', major):
-            raise ValueError(f"Invalid major identifier: {major!r}")
-        if not self.identifier_is_valid('minor', minor):
-            raise ValueError(f"Invalid minor identifier: {minor!r}")
-        if not self.identifier_is_valid('patch', patch):
-            raise ValueError(f"Invalid patch identifier: {patch!r}")
+        for name, value in zip(('major', 'minor', 'patch'), core_parts):
+            if not self.identifier_is_valid(name, value):
+                raise ValueError(f"Invalid {name} identifier: {major!r}")
 
         # Set identifier attributes after successful validation
         self.major = int(major)
