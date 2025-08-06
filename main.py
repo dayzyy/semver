@@ -69,6 +69,29 @@ class Version:
 
         return identifiers
 
+    def _validate(self, identifier: "Version.Identifier", value: str) -> None:
+        if not value:
+            raise ValueError(f"Empty {identifier.value} identifier!")
+
+        valid_chars = self.SEMVER_IDENTIFIER_VALID_CHARS.get(identifier)
+        if valid_chars is None:
+            raise ValueError(f"Unknown identifier: {identifier}")
+
+        if identifier != self.Identifier.BUILD:
+            # For all identifiers excluding build:
+            # Make sure there is no leading 0
+            # (We don't care about leading 0's' in build metadata as it is not used in version comparison)
+            if len(value) > 1 and value.isdigit() and value[0] == '0':
+                raise ValueError(
+                    f"Leading 0 is not allowed in "
+                    f"{"digital part of " if identifier == self.Identifier.PRE_RELEASE else ""}"
+                    f"{identifier.value} identifier!"
+                )
+
+        for char in value:
+            if char not in valid_chars:
+                raise ValueError(f"Invalid {identifier.value} identifier: {value!r}")
+
     def _validate_identiiers(self, identifiers: dict["Version.Identifier", str | None]) -> None:
         for identifier in self._core_identifiers:
             value = identifiers[identifier]
@@ -76,8 +99,7 @@ class Version:
             # Safe to assert: _parse_version_string ensures all core identifiers are present
             assert value is not None
 
-            if not self.identifier_is_valid(identifier, value):
-                raise ValueError(f"Invalid {identifier.value} identifier: {value!r}")
+            self._validate(identifier, value)
 
         for identifier in self._optional_identifiers:
             value = identifiers[identifier]
@@ -87,8 +109,7 @@ class Version:
 
             parts = value.split('.')
             for part in parts:
-                if not self.identifier_is_valid(identifier, part):
-                    raise ValueError(f"Invalid {identifier.value} identifier: {value!r}")
+                self._validate(identifier, part)
 
     def __str__(self) -> str:
          return (
@@ -158,22 +179,3 @@ class Version:
         return self == other or self > other
 
     __repr__ = __str__
-
-    def identifier_is_valid(self, identifier: "Version.Identifier", value: str) -> bool:
-        # Check for empty identifier (Invalid everywhere)
-        if not value:
-            return False
-
-        valid_chars = self.SEMVER_IDENTIFIER_VALID_CHARS.get(identifier)
-        if valid_chars is None:
-            raise ValueError(f"Unknown identifier: {identifier}")
-
-        if identifier != self.Identifier.BUILD:
-            # For all identifiers excluding build:
-            # Make sure there is no leading 0
-            # (We don't care about leading 0's' in build metadata as it is not used in version comparison)
-            if len(value) > 1 and value.isdigit() and value[0] == '0':
-                return False
-
-        # Validate each character
-        return all(char in valid_chars for char in value)
