@@ -11,20 +11,21 @@ class Version:
         BUILD = 'build'
 
     _core_identifiers = (Identifier.MAJOR, Identifier.MINOR, Identifier.PATCH)
+    _optional_identifiers = (Identifier.PRE_RELEASE, Identifier.BUILD)
 
     # Mapping of valid characters for each identifier
     # {identifier: set-of-valid-char}; Use set for O(1) lookups
     # Based on provided documentation (https://semver.org/)
     SEMVER_IDENTIFIER_VALID_CHARS = {
-        Identifier.MAJOR.value: set("0123456789"), # Digits 0-9
-        Identifier.MINOR.value: set("0123456789"), # Digits 0-9
-        Identifier.PATCH.value: set("0123456789"), # Digits 0-9
+        Identifier.MAJOR: set("0123456789"), # Digits 0-9
+        Identifier.MINOR: set("0123456789"), # Digits 0-9
+        Identifier.PATCH: set("0123456789"), # Digits 0-9
 
         # Alphanumeric + Hyphen
-        Identifier.PRE_RELEASE.value: set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"),
+        Identifier.PRE_RELEASE: set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"),
 
         # Alphanumeric + Hyphen
-        Identifier.BUILD.value: set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"),
+        Identifier.BUILD: set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"),
     }
 
     # Make sure the second parameter is instance of Version
@@ -39,47 +40,55 @@ class Version:
         return wrapper
 
     def __init__(self, version: str) -> None:
-        self._init_from_string(version)
+        identifiers = self._parse_version_string(version)
+        self._validate_identiiers(identifiers)
 
-    def _init_from_string(self, version) -> None:
-        build = None
-        pre_release = None
+        for identifier, value in identifiers.items():
+            attr = identifier.value
 
-        # Extract the build identifier, if it exists, and validate it
+            if identifier in self._core_identifiers:
+                assert value is not None
+                setattr(self, attr, int(value))
+            else:
+                setattr(self, attr, value)
+
+    def _parse_version_string(self, version: str) -> dict["Version.Identifier", str | None]:
+        identifiers: dict[Version.Identifier, str | None] = {identifier: None for identifier in self.Identifier}
+
         if '+' in version:
-            version, build = version.split('+', 1)
-            build_parts = build.split(".")
-
-            for part in build_parts:
-                if not self.identifier_is_valid(self.Identifier.BUILD, part):
-                    raise ValueError(f"Invalid {self.Identifier.BUILD} identifier: {build!r}")
-
-        # Extract the pre_release identifier, if it exists, and validate it
+            version, identifiers[self.Identifier.BUILD] = version.split('+', 1)
         if '-' in version:
-            version, pre_release = version.split('-', 1)
-            pre_release_parts = pre_release.split('.')
+            version, identifiers[self.Identifier.PRE_RELEASE] = version.split('-', 1)
 
-            for part in pre_release_parts:
-                if not self.identifier_is_valid(self.Identifier.PRE_RELEASE, part):
-                    raise ValueError(f"Invalid {self.Identifier.PRE_RELEASE} identifier: {pre_release!r}")
+        core_identifiers = version.split('.')
+        if len(core_identifiers) != 3:
+            raise ValueError(f"Core version must have exactly 3 identifiers {".".join(id.value for id in self._core_identifiers)}")
 
-        # Make sure the remaining version contains major, minor and patch identifiers
-        core_parts = version.split('.')
-        if len(core_parts) != 3:
-            raise ValueError(f"Core version must have exactly 3 identifiers {".".join([id.value for id in self._core_identifiers])}")
+        for i, identifier in enumerate(self._core_identifiers):
+            identifiers[identifier] = core_identifiers[i]
 
-        major, minor, patch = core_parts
-        # Validate the core identifiers
-        for name, value in zip(self._core_identifiers, core_parts):
-            if not self.identifier_is_valid(name, value):
-                raise ValueError(f"Invalid {name.value} identifier: {value!r}")
+        return identifiers
 
-        # Set identifier attributes after successful validation
-        self.major = int(major)
-        self.minor = int(minor)
-        self.patch = int(patch)
-        self.pre_release = pre_release
-        self.build = build
+    def _validate_identiiers(self, identifiers: dict["Version.Identifier", str | None]) -> None:
+        for identifier in self._core_identifiers:
+            value = identifiers[identifier]
+
+            # Safe to assert: _parse_version_string ensures all core identifiers are present
+            assert value is not None
+
+            if not self.identifier_is_valid(identifier, value):
+                raise ValueError(f"Invalid {identifier.value} identifier: {value!r}")
+
+        for identifier in self._optional_identifiers:
+            value = identifiers[identifier]
+
+            if value is None:
+                continue
+
+            parts = value.split('.')
+            for part in parts:
+                if not self.identifier_is_valid(identifier, part):
+                    raise ValueError(f"Invalid {identifier.value} identifier: {value!r}")
 
     def __str__(self) -> str:
          return (
@@ -155,7 +164,7 @@ class Version:
         if not value:
             return False
 
-        valid_chars = self.SEMVER_IDENTIFIER_VALID_CHARS.get(identifier.value)
+        valid_chars = self.SEMVER_IDENTIFIER_VALID_CHARS.get(identifier)
         if valid_chars is None:
             raise ValueError(f"Unknown identifier: {identifier}")
 
