@@ -11,8 +11,8 @@ class Version:
         PRE_RELEASE = 'pre_release'
         BUILD = 'build'
 
-    _core_identifiers = (Identifier.MAJOR, Identifier.MINOR, Identifier.PATCH)
-    _optional_identifiers = (Identifier.PRE_RELEASE, Identifier.BUILD)
+    CORE_IDENTIFIERS = (Identifier.MAJOR, Identifier.MINOR, Identifier.PATCH)
+    OPTIONAL_IDENTIFIERS = (Identifier.PRE_RELEASE, Identifier.BUILD)
 
     major: int
     minor: int
@@ -50,7 +50,7 @@ class Version:
         for identifier, value in identifiers.items():
             attr = identifier.value
 
-            if identifier in self._core_identifiers:
+            if identifier in self.CORE_IDENTIFIERS:
                 # Safe to assert: _parse_version_string ensures all core identifiers are present
                 assert value is not None
                 setattr(self, attr, int(value))
@@ -67,9 +67,9 @@ class Version:
 
         core_identifiers = version.split('.')
         if len(core_identifiers) != 3:
-            raise ValueError(f"Core version must have exactly 3 identifiers {".".join(id.value for id in self._core_identifiers)}")
+            raise ValueError(f"Core version must have exactly 3 identifiers {".".join(id.value for id in self.CORE_IDENTIFIERS)}")
 
-        for i, identifier in enumerate(self._core_identifiers):
+        for i, identifier in enumerate(self.CORE_IDENTIFIERS):
             identifiers[identifier] = core_identifiers[i]
 
         return identifiers
@@ -96,7 +96,7 @@ class Version:
                 raise ValueError(f"Invalid {identifier.value} identifier: {value!r}")
 
     def _validate_identiiers(self, identifiers: dict["Version.Identifier", str | None]) -> None:
-        for identifier in self._core_identifiers:
+        for identifier in self.CORE_IDENTIFIERS:
             value = identifiers[identifier]
 
             # Safe to assert: _parse_version_string ensures all core identifiers are present
@@ -104,7 +104,7 @@ class Version:
 
             self._validate(identifier, value)
 
-        for identifier in self._optional_identifiers:
+        for identifier in self.OPTIONAL_IDENTIFIERS:
             value = identifiers[identifier]
 
             if value is None:
@@ -130,7 +130,7 @@ class Version:
 
     @safe_comparison
     def __gt__(self, other, /) -> bool:
-        for identifier in self._core_identifiers:
+        for identifier in self.CORE_IDENTIFIERS:
             if getattr(self, identifier.value) > getattr(other, identifier.value): return True
             if getattr(self, identifier.value) < getattr(other, identifier.value): return False
 
