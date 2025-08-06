@@ -1,7 +1,8 @@
 from typing import Callable
-from functools import wraps
+from functools import wraps, total_ordering
 from enum import Enum
 
+@total_ordering
 class Version:
     class Identifier(Enum):
         MAJOR = 'major'
@@ -167,21 +168,5 @@ class Version:
 
         # If all parts match but one pre-release is shorter, it preceeds
         return len(self_pr_parts) > len(other_pr_parts)
-
-    @safe_comparison
-    def __ne__(self, other) -> bool:
-        return not self == other
-
-    @safe_comparison
-    def __lt__(self, other, /) -> bool:
-        return not (self == other or self > other)
-
-    @safe_comparison
-    def __le__(self, other, /) -> bool:
-        return self == other or self < other
-
-    @safe_comparison
-    def __ge__(self, other, /) -> bool:
-        return self == other or self > other
 
     __repr__ = __str__
