@@ -13,6 +13,12 @@ class Version:
     _core_identifiers = (Identifier.MAJOR, Identifier.MINOR, Identifier.PATCH)
     _optional_identifiers = (Identifier.PRE_RELEASE, Identifier.BUILD)
 
+    major: int
+    minor: int
+    patch: int
+    pre_release: str | None
+    build: str | None
+
     # Mapping of valid characters for each identifier
     # {identifier: set-of-valid-char}; Use set for O(1) lookups
     # Based on provided documentation (https://semver.org/)
