@@ -45,7 +45,7 @@ class Version:
 
     def __init__(self, version: str) -> None:
         identifiers = self._parse_version_string(version)
-        self._validate_identiiers(identifiers)
+        self._validate_identifiers(identifiers)
 
         for identifier, value in identifiers.items():
             attr = identifier.value
@@ -95,7 +95,7 @@ class Version:
             if char not in valid_chars:
                 raise ValueError(f"Invalid {identifier.value} identifier: {value!r}")
 
-    def _validate_identiiers(self, identifiers: dict["Version.Identifier", str | None]) -> None:
+    def _validate_identifiers(self, identifiers: dict["Version.Identifier", str | None]) -> None:
         for identifier in self.CORE_IDENTIFIERS:
             value = identifiers[identifier]
 
