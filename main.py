@@ -20,13 +20,11 @@ class Version:
     pre_release: str | None
     build: str | None
 
-    # Mapping of valid characters for each identifier
-    # {identifier: set-of-valid-char}; Use set for O(1) lookups
-    # Based on provided documentation (https://semver.org/)
+    # Valid characters per identifier, based on https://semver.org/
     SEMVER_IDENTIFIER_VALID_CHARS = {
-        Identifier.MAJOR: set("0123456789"), # Digits 0-9
-        Identifier.MINOR: set("0123456789"), # Digits 0-9
-        Identifier.PATCH: set("0123456789"), # Digits 0-9
+        Identifier.MAJOR: set("0123456789"),
+        Identifier.MINOR: set("0123456789"), 
+        Identifier.PATCH: set("0123456789"),
 
         # Alphanumeric + Hyphen
         Identifier.PRE_RELEASE: set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"),
@@ -35,7 +33,6 @@ class Version:
         Identifier.BUILD: set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"),
     }
 
-    # Make sure the second parameter is instance of Version
     @staticmethod
     def safe_comparison(method: Callable[["Version", object], bool]) -> Callable[["Version", object], bool]:
         @wraps(method)
@@ -54,6 +51,7 @@ class Version:
             attr = identifier.value
 
             if identifier in self._core_identifiers:
+                # Safe to assert: _parse_version_string ensures all core identifiers are present
                 assert value is not None
                 setattr(self, attr, int(value))
             else:
@@ -85,9 +83,7 @@ class Version:
             raise ValueError(f"Unknown identifier: {identifier}")
 
         if identifier != self.Identifier.BUILD:
-            # For all identifiers excluding build:
-            # Make sure there is no leading 0
-            # (We don't care about leading 0's' in build metadata as it is not used in version comparison)
+            # Disallow leading zeros (except in build metadata)
             if len(value) > 1 and value.isdigit() and value[0] == '0':
                 raise ValueError(
                     f"Leading 0 is not allowed in "
@@ -125,9 +121,6 @@ class Version:
             + (f"+{self.build}" if self.build else "")
          )
 
-    # COMPARISON METHODS -- While comparing build metadata is ignored!
-    # Based on provided documentation (https://semver.org/)
-
     @safe_comparison
     def __eq__(self, other, /) -> bool:
         return all([
@@ -137,36 +130,34 @@ class Version:
 
     @safe_comparison
     def __gt__(self, other, /) -> bool:
-        # Compare core identifiers 'major', 'minor', 'patch'
         for identifier in self._core_identifiers:
             if getattr(self, identifier.value) > getattr(other, identifier.value): return True
             if getattr(self, identifier.value) < getattr(other, identifier.value): return False
 
         if self.pre_release is None and other.pre_release is None:
-            return False  # Normal release == Normal release (pre-release absent in both)
+            return False
         if self.pre_release is None and other.pre_release is not None:
-            return True # Normal release > Pre-release
+            return True
         if self.pre_release is not None and other.pre_release is None:
-            return False # Pre-release > Normal release
+            return False
 
         self_pr_parts = self.pre_release.split(".") if self.pre_release else []
         other_pr_parts = other.pre_release.split(".") if other.pre_release else []
         
-        # Comprare pre-release identifiers
         for p1, p2 in zip(self_pr_parts, other_pr_parts):
-            if p1 == p2: continue # If strings match exactly no need to compare
+            if p1 == p2: continue
 
             if p1.isdigit() and p2.isdigit():
-                return int(p1) > int(p2) # Numeric comparison
+                return int(p1) > int(p2)
 
             if p1.isdigit():
-                return False # Numeric < Alphanumeric
+                return False
             if p2.isdigit():
-                return True # Alphanumeric > Numeric
+                return True
 
-            return p1 > p2 # Alphanumeric comparison
+            return p1 > p2
 
-        # If all parts match but one pre-release is shorter, it preceeds
+        # If all parts match but one pre-release is shorter, it preceds
         return len(self_pr_parts) > len(other_pr_parts)
 
     __repr__ = __str__
